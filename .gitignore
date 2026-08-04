@@ -1,0 +1,4 @@
+daemon/.build/
+shim/*.dylib
+*.o
+.DS_Store
