@@ -26,7 +26,7 @@ Bluetooth.
 
 ## Lo que hay que saber antes de tocar nada
 
-Estas cinco cosas son las que cuestan horas si se desconocen.
+Estas seis cosas son las que cuestan horas si se desconocen.
 
 **1. macOS no permite publicar un mando virtual para todo el sistema.**
 El kernel exige entitlements que Apple sólo concede a cuentas de pago, y AMFI
