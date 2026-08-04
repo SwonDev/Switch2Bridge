@@ -60,7 +60,7 @@ Parece la respuesta. No lo es.
 ### 2.2 Sin entitlement devuelve nil
 
 ```
-❌ FALLO: HIDVirtualDevice(properties:) devolvió nil
+No FALLO: HIDVirtualDevice(properties:) devolvió nil
 ```
 
 ### 2.3 Con entitlement, AMFI mata el proceso
@@ -107,7 +107,7 @@ Con Accesibilidad y Monitorización de entrada concedidas:
 AXIsProcessTrusted: true
 IOHIDCheckAccess(postEvent)   = GRANTED
 IOHIDCheckAccess(listenEvent) = GRANTED
-❌ IOHIDUserDeviceCreateWithProperties devolvió nil    (IOServiceOpen:0xe00002c2)
+No IOHIDUserDeviceCreateWithProperties devolvió nil    (IOServiceOpen:0xe00002c2)
 ```
 
 ### 2.6 DriverKit exige desactivar SIP
@@ -125,7 +125,7 @@ requiere el Apple Developer Program de pago más aprobación manual de Apple.
 
 ### 2.7 Confirmación externa
 
-- `switch2bridge-macos` documenta en su tabla: **«Native HID: ❌ Not possible —
+- `switch2bridge-macos` documenta en su tabla: **«Native HID: No Not possible —
   Would require DriverKit»**.
 - Sam Lantinga, autor de SDL, sobre este mismo mando en macOS: *«You need to get
   special permissions from Apple to access raw USB controllers. I haven't managed

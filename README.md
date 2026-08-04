@@ -43,7 +43,7 @@ En lugar de pedirle a macOS un mando virtual para todo el sistema, mete el mando
 **dentro de los procesos que lo van a consumir**, que corren en espacio de
 usuario y no necesitan permiso alguno.
 
-📖 El recorrido completo, con todas las pruebas y los callejones sin salida, está
+El recorrido completo, con todas las pruebas y los callejones sin salida, está
 en [`docs/INVESTIGACION.md`](docs/INVESTIGACION.md).
 
 ---
@@ -74,34 +74,85 @@ crea un gamepad XInput real dentro de la botella.
 Es legítimo y reversible: dentro del bundle ajeno sólo se **añade** un fichero,
 que el desinstalador retira.
 
-📖 Detalle técnico en [`docs/COMO-FUNCIONA.md`](docs/COMO-FUNCIONA.md).
+Detalle técnico en [`docs/COMO-FUNCIONA.md`](docs/COMO-FUNCIONA.md).
+
+---
+
+## Requisitos
+
+| Requisito | Detalle |
+|---|---|
+| macOS | 15 (Sequoia) o posterior. Probado en 26.5 |
+| Procesador | Apple Silicon o Intel |
+| Herramientas de línea de órdenes de Xcode | para compilar el demonio: `xcode-select --install` |
+| Un runtime de Wine | CrossOver, Wine oficial o cualquier empaquetado propio |
+| El mando | Nintendo Switch 2 Pro Controller |
+
+No hace falta cuenta de desarrollador de Apple, ni desactivar SIP, ni permisos
+especiales más allá del de Bluetooth que macOS pide la primera vez.
 
 ---
 
 ## Instalación
 
+**1. Descarga el proyecto.**
+
 ```bash
-cd ~/Switch2Bridge
+git clone https://github.com/SwonDev/Switch2Bridge.git
+cd Switch2Bridge
+```
+
+**2. Ejecuta el instalador.**
+
+```bash
 ./instalar.sh
 ```
 
-Deja instalado:
+Compila el demonio, lo instala como agente de arranque y coloca la shim de SDL
+en cada runtime de Wine que encuentre. Tarda menos de un minuto.
+
+**3. Concede el permiso de Bluetooth.** macOS lo pedirá la primera vez que el
+demonio arranque. Si no aparece el aviso, ve a *Ajustes del Sistema → Privacidad
+y seguridad → Bluetooth* y activa **Switch2Bridge**.
+
+**4. Enciende el mando.** Si venía de la consola, mantén pulsado **SYNC** —el
+botón pequeño de arriba, junto al USB-C— hasta que los LEDs parpadeen. El mando
+recuerda un solo host, así que tendrás que volver a sincronizarlo con la Switch
+cuando quieras usarlo allí.
+
+**5. Comprueba que todo está en su sitio.**
+
+```bash
+./verificar.sh
+```
+
+Recorre la cadena entera y debe terminar con `La cadena está intacta`. Si algo
+falla, te dice qué eslabón y con qué orden se arregla.
+
+**6. Cierra la sesión de Wine** para que cargue la shim recién instalada:
+
+```bash
+pkill -f winedevice; pkill -f wineserver
+```
+
+Esto sólo hace falta la primera vez y después de cada reinstalación.
+
+### Qué deja instalado
 
 | Qué | Dónde |
 |---|---|
 | Demonio sin interfaz (`LSUIElement`) | `~/Applications/Switch2Bridge.app` |
-| Arranque automático al iniciar sesión | `~/Library/LaunchAgents/dev.swondev.switch2bridge.plist` |
+| Agente de arranque automático | `~/Library/LaunchAgents/dev.swondev.switch2bridge.plist` |
+| Copia de la SDL original y registros | `~/Library/Application Support/Switch2Bridge/` |
 | Shim de SDL | dentro de cada runtime de Wine detectado |
 | `Enable SDL = 1` | en el registro de cada botella |
 
-Es **idempotente**. Vuelve a ejecutarlo tras actualizar CrossOver o Steam,
-porque la actualización se lleva por delante la shim.
+El instalador es **idempotente**: puedes volver a ejecutarlo cuantas veces
+quieras. Hazlo después de actualizar CrossOver, porque la actualización
+sobrescribe los ficheros del bundle y se lleva la shim por delante.
 
-Después:
-
-```bash
-./verificar.sh    # comprueba la cadena entera, eslabón por eslabón
-```
+Dentro de los bundles ajenos no se sobrescribe nada: sólo se **añade** un
+fichero, que el desinstalador retira.
 
 ---
 
@@ -116,7 +167,7 @@ Después:
    ```bash
    pkill -f winedevice; pkill -f wineserver
    ```
-   ⚠️ `wineserver -k` **no basta** — es el error que más tiempo cuesta.
+   Importante: `wineserver -k` **no basta** — es el error que más tiempo cuesta.
 3. Abre tu botella con el Steam de Windows dentro. El mando aparece como
    `HID\VID_057E&PID_2069&XI_00`, un gamepad XInput con identidad Nintendo.
 4. En ese Steam, **configura el mando una vez**: detéctalo como mando de Switch
@@ -133,7 +184,7 @@ conmuta el mando a **modo HID estándar**. macOS lo expone entonces como gamepad
 real (`AppleUserHIDDevice`, usage 1/5 = Game Pad, 4 ejes, 21 botones), lo que
 también sirve para Wine sin necesidad del Bluetooth.
 
-⚠️ Que macOS lo exponga **no** significa que los juegos nativos lo usen bien:
+Importante: Que macOS lo exponga **no** significa que los juegos nativos lo usen bien:
 ver [Alcance](#alcance).
 
 ---
@@ -176,8 +227,11 @@ Registros en `~/Library/Application Support/Switch2Bridge/`:
 | `reportes.log` | bytes crudos del mando al pulsar botones |
 | `gatt.log` | tabla GATT completa del mando |
 
-📖 Problemas frecuentes en
-[`docs/SOLUCION-PROBLEMAS.md`](docs/SOLUCION-PROBLEMAS.md).
+Problemas frecuentes en [`docs/SOLUCION-PROBLEMAS.md`](docs/SOLUCION-PROBLEMAS.md).
+
+Si vas a seguir desarrollándolo, empieza por
+[`docs/CONTINUIDAD.md`](docs/CONTINUIDAD.md): estado, trampas conocidas e ideas
+pendientes.
 
 ---
 
@@ -185,8 +239,8 @@ Registros en `~/Library/Application Support/Switch2Bridge/`:
 
 | Escenario | Bluetooth | USB-C |
 |---|---|---|
-| Juegos de **Windows bajo Wine** (CrossOver y otros runtimes) | ✅ confirmado | ✅ |
-| Juegos **nativos de macOS** | ❌ | ❌ |
+| Juegos de **Windows bajo Wine** (CrossOver y otros runtimes) | Sí, confirmado | Sí |
+| Juegos **nativos de macOS** | No | No |
 
 ### Por qué los juegos nativos no funcionan
 
@@ -238,7 +292,11 @@ daemon/Sources/Switch2Bridge/   demonio Swift 6
 daemon/Sources/USBSwitch2/      secuencia de inicialización USB (IOKit, en C)
 shim/shim_sdl.c                 shim de SDL que carga Wine
 
-docs/                           investigación, arquitectura, protocolo, problemas
+docs/COMO-FUNCIONA.md           arquitectura y decisiones de diseño
+docs/INVESTIGACION.md           todas las pruebas y los callejones sin salida
+docs/PROTOCOLO-BLE.md           el protocolo del mando, documentado
+docs/SOLUCION-PROBLEMAS.md      síntoma, causa y solución
+docs/CONTINUIDAD.md             estado, ideas pendientes y cómo retomarlo
 instalar.sh · desinstalar.sh · verificar.sh · estado.sh · monitor.sh
 ```
 

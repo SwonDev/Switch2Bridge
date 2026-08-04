@@ -49,7 +49,7 @@ shim.
 pkill -f winedevice; pkill -f wineserver
 ```
 
-⚠️ **`wineserver -k` no basta.** Es el error que más tiempo cuesta.
+Importante: **`wineserver -k` no basta.** Es el error que más tiempo cuesta.
 
 Comprobación de que Windows lo ve:
 

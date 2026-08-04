@@ -32,4 +32,4 @@ rm -rf "$SOPORTE"
 verde "  datos de soporte eliminados"
 
 echo
-verde "✅ Desinstalado. Cierra las sesiones de Wine con: pkill -f winedevice"
+verde "Desinstalado. Cierra las sesiones de Wine con: pkill -f winedevice"

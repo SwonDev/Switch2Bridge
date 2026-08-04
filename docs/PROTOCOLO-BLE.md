@@ -182,6 +182,6 @@ descriptor → Report ID 9: 21 botones + 4 ejes de 12 bits (X, Y, Rx, Rz)
 El mando recuerda **un solo host**. Los comandos `0x15` permiten grabarle la MAC
 del Mac y una LTK fija para que reconecte sin pulsar SYNC.
 
-⚠️ **Efecto secundario:** sustituye el emparejamiento con la consola, y habría
+Importante: **Efecto secundario:** sustituye el emparejamiento con la consola, y habría
 que volver a sincronizar el mando con la Switch 2 para usarlo allí. Por eso no
 se ejecuta automáticamente.

@@ -145,7 +145,7 @@ fi
 titulo "Veredicto"
 
 if [ "$FALLOS" -eq 0 ]; then
-    printf "  \033[1;32m✅ La cadena está intacta.\033[0m\n"
+    printf "  \033[1;32mLa cadena está intacta.\033[0m\n"
     printf "     \033[2mRecuerda cerrar la sesión de Wine tras instalar:\033[0m\n"
     printf "     \033[2mpkill -f winedevice; pkill -f wineserver\033[0m\n"
 else

@@ -164,7 +164,7 @@ else
 fi
 
 echo
-verde "✅ Instalación completada."
+verde "Instalación completada."
 echo
 echo "Ahora:"
 echo "  1. Enciende el mando y mantén pulsado el botón SYNC (arriba, junto al USB-C)"

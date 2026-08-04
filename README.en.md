@@ -125,8 +125,8 @@ and the uninstaller removes it.
 
 | Scenario | Bluetooth | USB-C |
 |---|---|---|
-| **Windows games under Wine** (CrossOver and other runtimes) | ✅ confirmed | ✅ |
-| **Native macOS games** | ❌ | ❌ |
+| **Windows games under Wine** (CrossOver and other runtimes) | Sí confirmed | Sí |
+| **Native macOS games** | No | No |
 
 Native games would need a system-wide virtual HID device, which requires the
 Apple entitlement that free accounts cannot get. Hardware presenting itself as an

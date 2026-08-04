@@ -40,16 +40,16 @@ struct Registro: Sendable {
 
     func info(_ mensaje: String) {
         sistema.info("\(mensaje, privacy: .public)")
-        escribir("·", mensaje)
+        escribir("-", mensaje)
     }
 
     func aviso(_ mensaje: String) {
         sistema.warning("\(mensaje, privacy: .public)")
-        escribir("⚠", mensaje)
+        escribir("!", mensaje)
     }
 
     func error(_ mensaje: String) {
         sistema.error("\(mensaje, privacy: .public)")
-        escribir("✗", mensaje)
+        escribir("x", mensaje)
     }
 }
