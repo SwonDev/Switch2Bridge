@@ -220,7 +220,12 @@ joystick virtual.
 
 ---
 
-## 4. Rodeo 2 — Steam para macOS (juegos nativos)
+## 4. Rodeo 2 — Steam para macOS (juegos nativos): INTENTADO Y DESCARTADO
+
+> **Resultado: no funciona.** Todo lo técnico de este apartado se logró —Steam
+> llega a reconocer el mando— pero **en los juegos nativos no responde**, así que
+> la vía se retiró del proyecto. Se documenta para que nadie la repita creyendo
+> que es un camino abierto.
 
 ### 4.1 El hallazgo
 
@@ -269,7 +274,7 @@ SDL3: joystick virtual dado de alta (id 2, sizeof desc = 136)
   Serial: 57e-2069-73833de    ← VID Nintendo 0x057E
 ```
 
-### 4.4 La última pieza: Steam Input
+### 4.4 El obstáculo de fondo: los motores nativos
 
 Aun con todo lo anterior, **Vampire Crawlers (Unity) seguía sin responder**.
 Diagnóstico:
@@ -288,7 +293,22 @@ deja como joystick genérico y el juego los ignora.
 La solución es **Steam Input**: Steam sí reconoce el mando (real o virtual) y se
 lo entrega al juego traducido.
 
-### 4.5 Qué se confirmó exactamente
+### 4.5 Por qué se descartó
+
+Con el inyector activo, Steam listaba el mando, pero **los juegos nativos no
+respondían**. Probado además por cable, donde el mando es un HID real del
+sistema: los motores lo detectan **mal y con errores**, porque su descriptor es
+atípico (ejes `Rx`/`Rz` para el stick derecho, sin *hat*, 21 botones sin
+correspondencia estándar).
+
+Y `GameController.framework` no lo adopta en absoluto: con el mando conectado
+por cable, `GCController.controllers()` devuelve vacío. Apple sólo expone ahí los
+mandos de su lista blanca.
+
+Conclusión: para juegos nativos haría falta un HID virtual del sistema —el
+entitlement bloqueado— o hardware que se presentase como un mando ya conocido.
+
+### 4.6 Qué sí se confirmó
 
 La validación final se hizo **en la ruta de Wine**, no en la nativa:
 
@@ -304,9 +324,8 @@ La validación final se hizo **en la ruta de Wine**, no en la nativa:
 Eso confirma de punta a punta la cadena
 `BLE → demonio → shim de SDL en Wine → winebus → gamepad XInput → juego`.
 
-La ruta nativa de macOS (inyección en el Steam de macOS) está implementada y se
-comprobó que **Steam reconoce el mando inyectado**, pero no se ha confirmado
-todavía en un juego nativo concreto. Queda como pendiente honesto.
+La ruta nativa de macOS se descartó tras comprobar en un juego que no funciona
+(ver 4.5).
 
 ---
 
@@ -332,7 +351,8 @@ Report ID 2 → salida, 63 bytes
 ```
 
 Nota: los ejes del stick derecho son **Rx y Rz**, no los habituales Z/Rz. Algún
-juego podría no mapearlos por su cuenta; Steam Input lo resuelve.
+juego podría no mapearlos por su cuenta. Dentro de Wine no importa, porque el
+gamepad se publica ya normalizado como XInput.
 
 ---
 
@@ -348,7 +368,8 @@ juego podría no mapearlos por su cuenta; Steam Input lo resuelve.
 | Que la Mac se conecte a sí misma por BLE como periférico HID | un radio Bluetooth no puede conectarse consigo mismo |
 | `DYLD_LIBRARY_PATH` para colar la shim en Wine | `wineloader` tiene hardened runtime y las variables DYLD se eliminan |
 | Poner la shim en `~/lib` | los `LC_RPATH` del llamante ganan a las rutas de reserva de dyld |
-| Inyectar en juegos con hardened runtime | macOS lo impide; ahí sólo queda Steam Input o el cable |
+| Inyectar en juegos con hardened runtime | macOS lo impide |
+| Inyectar un joystick SDL en el Steam de macOS | Steam lo reconoce, pero los juegos nativos no responden |
 
 ---
 
@@ -377,7 +398,7 @@ juego podría no mapearlos por su cuenta; Steam Input lo resuelve.
 | 17:38 | Se descubre el `dlopen` por nombre suelto de `winebus` |
 | 17:46 | La shim se carga dentro de `winedevice.exe` |
 | 18:12 | El mando conecta por BLE y se identifica (`el mando de pruebas`) |
-| 19:01 | El inyector funciona en SDL3; Steam reconoce el mando |
+| 19:01 | El inyector funciona en SDL3 y Steam reconoce el mando (pero los juegos nativos no responderán) |
 | 19:41 | Se verifica la decodificación de botones con bytes crudos |
 | 19:53 | La secuencia USB conmuta el mando a HID real |
 | 20:05 | Steam ve el mando por USB (`type: 057e 2069`) |

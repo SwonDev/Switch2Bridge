@@ -1,17 +1,17 @@
 # Switch2Bridge
 
 **Usa el Nintendo Switch 2 Pro Controller en tu Mac, inalámbrico y con ejes
-analógicos, en juegos de Windows bajo Wine.**
+analógicos, en juegos de Windows bajo Wine (CrossOver y compatibles).**
 
 Sin desactivar SIP · sin entitlements de Apple · sin cuentas de pago · sin hardware extra.
 
 Probado en macOS 26.5 · Apple Silicon (M5 Pro) · agosto de 2026.
 
-> **Estado de las pruebas.** La ruta de Wine está **confirmada en un juego real**:
-> *Dragonsword Awakening*, en el Steam de Windows dentro de una botella, primero
-> por cable y después **sin cable**. La ruta para juegos nativos de macOS está
-> implementada y se comprueba que Steam reconoce el mando, pero **aún no se ha
-> confirmado en un juego nativo concreto**. Ver [Alcance](#alcance).
+> **Qué cubre y qué no.** Está confirmado en un juego real —*Dragonsword
+> Awakening*, en el Steam de Windows dentro de una botella, primero por cable y
+> después **sin cable**—. **Los juegos nativos de macOS no están soportados**: se
+> intentó y no funciona. El motivo, con las pruebas, está en
+> [Alcance](#alcance).
 
 ---
 
@@ -57,31 +57,22 @@ en [`docs/INVESTIGACION.md`](docs/INVESTIGACION.md).
          Switch2Bridge.app  (demonio Swift 6 + CoreBluetooth)
          saludo · calibración · LEDs · reportes a 29 Hz
                     │  socket Unix · tramas de 20 bytes
-                    ├──────────────────────────┐
-                    ▼                          ▼
-      libSDL2-2.0.0.dylib              inyector.dylib
-      dentro de winedevice.exe         dentro de steam_osx
-      (reexporta la SDL real)          (SDL2 o SDL3, se adapta)
-                    │                          │
-                    ▼                          ▼
-      winebus → HID XInput            Steam ve el mando
-      en la botella de Windows        → Steam Input → juego nativo
+                    ▼
+      libSDL2-2.0.0.dylib   ← shim dentro de winedevice.exe
+      (reexporta la SDL real y añade un joystick virtual)
+                    │
+                    ▼
+      winebus → gamepad XInput en la botella de Windows
 ```
 
-Dos trucos, ambos legítimos y reversibles:
-
-**1. Wine.** `winebus.so` hace `dlopen("libSDL2-2.0.0.dylib")` **por nombre
+**El truco:** `winebus.so` hace `dlopen("libSDL2-2.0.0.dylib")` **por nombre
 suelto**, y su primer `LC_RPATH` es `@loader_path/`. Poniendo ahí nuestra
-biblioteca, Wine carga la nuestra; como reexporta la SDL original, no pierde
-nada. Damos de alta un joystick virtual y Wine crea un gamepad XInput real
-dentro de la botella.
+biblioteca, Wine carga la nuestra en lugar de la suya; como reexporta la SDL
+original, el runtime no pierde nada. Damos de alta un joystick virtual y Wine
+crea un gamepad XInput real dentro de la botella.
 
-**2. Steam para macOS.** El `steam_osx` que de verdad se ejecuta —el de
-`Application Support`, no el de `/Applications`— **no tiene hardened runtime**,
-así que admite `DYLD_INSERT_LIBRARIES`. Inyectamos un joystick virtual en su
-SDL3 y Steam lo reconoce como mando real. A partir de ahí **Steam Input** se lo
-entrega a los juegos, incluso a los de Unity que no reconocerían el mando por su
-cuenta.
+Es legítimo y reversible: dentro del bundle ajeno sólo se **añade** un fichero,
+que el desinstalador retira.
 
 📖 Detalle técnico en [`docs/COMO-FUNCIONA.md`](docs/COMO-FUNCIONA.md).
 
@@ -100,7 +91,6 @@ Deja instalado:
 |---|---|
 | Demonio sin interfaz (`LSUIElement`) | `~/Applications/Switch2Bridge.app` |
 | Arranque automático al iniciar sesión | `~/Library/LaunchAgents/dev.swondev.switch2bridge.plist` |
-| Lanzador de Steam con el mando | `~/Applications/Steam con mando.app` |
 | Shim de SDL | dentro de cada runtime de Wine detectado |
 | `Enable SDL = 1` | en el registro de cada botella |
 
@@ -136,27 +126,15 @@ Después:
 > Así se validó: *Dragonsword Awakening* respondió perfectamente, primero con el
 > cable puesto y después desenchufado, sólo por Bluetooth.
 
-### Juegos nativos de macOS — implementado, pendiente de confirmar
+### Por cable USB-C
 
-1. Enciende el mando.
-2. Abre **«Steam con mando»** desde `~/Applications` (no el Steam normal).
-   Si ya tenías Steam abierto, te pregunta y lo reinicia solo.
-3. **Una vez por juego:** clic derecho → *Propiedades → Mando* → **Activar
-   Steam Input**.
+Enchúfalo y ya está: el demonio detecta el cable y envía la secuencia que
+conmuta el mando a **modo HID estándar**. macOS lo expone entonces como gamepad
+real (`AppleUserHIDDevice`, usage 1/5 = Game Pad, 4 ejes, 21 botones), lo que
+también sirve para Wine sin necesidad del Bluetooth.
 
-> Se ha comprobado que Steam reconoce el mando inyectado
-> (`Controller 0 attributes: ProductID: 8297`), pero **no se ha confirmado
-> todavía en un juego nativo concreto**. Si lo pruebas, cuéntalo en un *issue*.
->
-> El paso 3 no es opcional: motores como Unity sólo convierten en `Gamepad` los
-> mandos de su base de datos interna y a los desconocidos los ignoran, aunque
-> sean HID reales.
-
-### Por cable USB-C (todos los juegos, sin configurar nada)
-
-Enchúfalo y ya está. El demonio detecta el cable y envía la secuencia que
-conmuta el mando a **modo HID estándar**; macOS lo expone entonces como gamepad
-real (`AppleUserHIDDevice`, usage 1/5 = Game Pad, 4 ejes, 21 botones).
+⚠️ Que macOS lo exponga **no** significa que los juegos nativos lo usen bien:
+ver [Alcance](#alcance).
 
 ---
 
@@ -195,7 +173,6 @@ Registros en `~/Library/Application Support/Switch2Bridge/`:
 |---|---|
 | `salida.log` | demonio: conexión BLE, saludo, USB |
 | `shim.log` | shim de SDL dentro de Wine |
-| `inyector.log` | inyector dentro de Steam y juegos |
 | `reportes.log` | bytes crudos del mando al pulsar botones |
 | `gatt.log` | tabla GATT completa del mando |
 
@@ -206,16 +183,35 @@ Registros en `~/Library/Application Support/Switch2Bridge/`:
 
 ## Alcance
 
-| Escenario | Bluetooth | USB-C | Estado |
-|---|---|---|---|
-| Juegos de Windows bajo Wine (CrossOver y otros runtimes) | ✅ | ✅ | **confirmado en juego real** |
-| Juegos nativos de macOS vía Steam Input | ✅ | ✅ | implementado; Steam reconoce el mando, falta confirmar en juego |
-| Juegos nativos fuera de Steam que sólo usen `GCController` | ❌ | ❌ | no alcanzable |
+| Escenario | Bluetooth | USB-C |
+|---|---|---|
+| Juegos de **Windows bajo Wine** (CrossOver y otros runtimes) | ✅ confirmado | ✅ |
+| Juegos **nativos de macOS** | ❌ | ❌ |
 
-La última fila es el límite duro: `GameController.framework` sólo expone los
-mandos de la lista blanca de Apple, y publicar un HID virtual para todo el
-sistema exige el entitlement que Apple no concede a cuentas gratuitas. Para ese
-caso haría falta hardware que se presentase como un mando ya conocido.
+### Por qué los juegos nativos no funcionan
+
+Se intentó y **no salió**. Merece la pena dejarlo escrito para que nadie repita
+el camino:
+
+- Por cable, macOS **sí** publica el mando como gamepad HID real (verificado:
+  `AppleUserHIDDevice`, 21 botones, 4 ejes, eventos reales). Pero los motores lo
+  mapean **mal y con errores**, porque su descriptor es atípico: los ejes del
+  stick derecho son `Rx`/`Rz` en vez de los habituales, no hay *hat* y expone 21
+  botones sin correspondencia estándar.
+- Motores como Unity leen por `IOHIDManager` y `GameController.framework`, y
+  sólo ascienden a `Gamepad` los mandos de su base de datos interna. Uno
+  desconocido queda como joystick genérico.
+- `GameController.framework` no lo adopta en absoluto: sólo expone los mandos de
+  la lista blanca de Apple (comprobado: `GCController.controllers()` devuelve
+  vacío con el mando conectado por cable).
+- Se probó a inyectar un joystick virtual en el Steam de macOS vía SDL3. Steam
+  llegaba a reconocerlo, pero **en los juegos no funcionó**, así que esa vía se
+  retiró del proyecto en lugar de dejarla como falsa promesa.
+
+La solución de fondo sería publicar un HID virtual para todo el sistema, y eso
+exige el entitlement que Apple no concede a cuentas gratuitas. Con hardware que
+se presentase como un mando ya conocido (por ejemplo un Xbox 360) sí se
+resolvería, pero eso queda fuera de este proyecto.
 
 ---
 
@@ -241,7 +237,7 @@ daemon/Sources/Switch2Bridge/   demonio Swift 6
   Rutas.swift                   rutas compartidas y traza
 daemon/Sources/USBSwitch2/      secuencia de inicialización USB (IOKit, en C)
 shim/shim_sdl.c                 shim de SDL que carga Wine
-shim/inyector.c                 inyector SDL2/SDL3 para Steam y juegos
+
 docs/                           investigación, arquitectura, protocolo, problemas
 instalar.sh · desinstalar.sh · verificar.sh · estado.sh · monitor.sh
 ```

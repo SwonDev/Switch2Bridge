@@ -36,35 +36,7 @@ Privacidad y seguridad → Bluetooth → activa **Switch2Bridge**.
 
 ## Funciona el puente pero el juego no responde
 
-Es lo más habitual, y casi siempre es una de estas tres.
-
-### 1. Juego nativo de macOS sin Steam Input
-
-**Síntoma:** `./monitor.sh` reacciona pero el juego ignora el mando.
-
-**Causa:** los motores como Unity sólo convierten en `Gamepad` los mandos de su
-base de datos interna. Uno desconocido queda como joystick genérico y el juego
-ni lo mira.
-
-**Solución:** clic derecho en el juego → *Propiedades → Mando* → **Activar Steam
-Input**. No es opcional.
-
-### 2. Steam abierto sin el inyector
-
-**Síntoma:** Steam no lista el mando; el juego tampoco.
-
-**Causa:** se abrió el Steam normal en vez de **«Steam con mando»**. macOS enfoca
-la instancia existente y la inyección nunca ocurre.
-
-**Solución:** cierra Steam del todo y abre «Steam con mando» desde
-`~/Applications`. Verás en el log:
-
-```bash
-tail ~/Library/Application\ Support/Switch2Bridge/inyector.log
-# SDL3: joystick virtual dado de alta (id 2, sizeof desc = 136)
-```
-
-### 3. Sesión de Wine antigua
+### Sesión de Wine antigua
 
 **Síntoma:** el juego de Windows bajo Wine no ve el mando.
 
@@ -111,8 +83,7 @@ El puente aplica disposición **Xbox por posición física**: el botón de abajo
 Si te salen invertidos, en Steam está activado *Usar disposición de botones de
 Nintendo*. Desactívalo.
 
-Para cambiarlo de raíz, las líneas `poner_boton` de `shim/inyector.c` y las
-`PULSA` de `shim/shim_sdl.c`.
+Para cambiarlo de raíz, las macros `PULSA` de `shim/shim_sdl.c`.
 
 ---
 

@@ -17,17 +17,16 @@ ver [`INVESTIGACION.md`](INVESTIGACION.md).
       │  calibración · reportes 29 Hz │
       └───────────────┬───────────────┘
                       │  socket Unix, tramas de 20 bytes
-          ┌───────────┴────────────┐
-          ▼                        ▼
-  libSDL2-2.0.0.dylib        inyector.dylib
-  (dentro de winedevice)     (dentro de steam_osx y sus hijos)
-          │                        │
-          ▼                        ▼
-  winebus → HID XInput       Steam → Steam Input → juego nativo
+                      ▼
+              libSDL2-2.0.0.dylib
+              (dentro de winedevice.exe)
+                      │
+                      ▼
+              winebus → gamepad XInput
 ```
 
-Una sola fuente de verdad (el demonio) y varios consumidores que se conectan a
-su socket. Añadir un destino nuevo es escribir otro cliente de 20 bytes.
+Una sola fuente de verdad (el demonio) y consumidores que se conectan a su
+socket. Añadir un destino nuevo es escribir otro cliente de 20 bytes.
 
 ---
 
@@ -43,6 +42,11 @@ su socket. Añadir un destino nuevo es escribir otro cliente de 20 bytes.
 | `VigilanteUSB.swift` | detección del cable y conmutación a HID |
 | `Rutas.swift` | rutas compartidas y traza dual (OSLog + fichero) |
 | `USBSwitch2/usb_switch2.c` | secuencia USB con IOKit (en C por las interfaces COM) |
+
+> Hubo un segundo consumidor —un inyector SDL2/SDL3 para el Steam de macOS— que
+> se retiró: Steam llegaba a reconocer el mando, pero los juegos nativos no
+> respondían. El intento queda documentado en
+> [`INVESTIGACION.md`](INVESTIGACION.md).
 
 ### Decisiones que importan
 
@@ -120,34 +124,6 @@ vez de como gamepad, y se perdería la equivalencia con XInput.
 **Requisito adicional:** `Enable SDL = 1` en
 `HKLM\System\CurrentControlSet\Services\winebus\Parameters` de cada botella.
 CrossOver lo trae desactivado en macOS.
-
----
-
-## Inyector para Steam y juegos nativos
-
-`shim/inyector.c` → `~/Library/Application Support/Switch2Bridge/inyector.dylib`
-
-Se carga con `DYLD_INSERT_LIBRARIES` desde el lanzador **«Steam con mando»**,
-que arranca el `steam_osx` **interno** (el de `Application Support`), el único
-sin *hardened runtime*. Los procesos hijos heredan la variable, así que los
-juegos que use SDL también lo reciben.
-
-**Se adapta solo.** Resuelve símbolos con `dlsym(RTLD_DEFAULT, …)`: si encuentra
-la API de SDL3 la usa, si no prueba con SDL2, y si no hay ninguna **se retira sin
-hacer nada**. Eso es lo que lo hace seguro de heredar en procesos ajenos.
-
-**El sondeo de SDL3.** SDL3 versiona sus interfaces *por tamaño*: el campo
-`version` del descriptor debe valer `sizeof(SDL_VirtualJoystickDesc)`. En vez de
-fijar una constante que envejecería con cada versión de SDL, el inyector prueba
-tamaños de 64 a 240 y valida el acierto contando los ejes del joystick creado.
-Con la SDL3 que trae Steam hoy, sale 136.
-
-**Por qué hace falta Steam Input.** Motores como Unity leen por `IOHIDManager` y
-`GCController`, no por SDL, y sólo convierten en `Gamepad` los dispositivos de
-su base de datos. Un mando desconocido queda como joystick genérico y el juego
-lo ignora — incluso siendo un HID real, verificado por cable. Steam sí lo
-reconoce, y Steam Input se lo entrega al juego traducido. De ahí que activarlo
-por juego sea obligatorio.
 
 ---
 

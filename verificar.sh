@@ -141,48 +141,13 @@ else
     info "no hay sesión de Wine activa"
 fi
 
-# ──────────────────────────────────────────── 5. Juegos nativos de macOS
-titulo "5 · Integración con Steam para macOS (juegos nativos)"
-
-if [ -f "$SOPORTE/inyector.dylib" ]; then
-    ok "inyector compilado"
-else
-    mal "falta el inyector"
-    info "arréglalo con: ./instalar.sh"
-fi
-
-if [ -d "$HOME/Applications/Steam con mando.app" ]; then
-    ok "lanzador «Steam con mando» disponible"
-else
-    aviso "sin lanzador (¿Steam para macOS no está instalado?)"
-fi
-
-if pgrep -f "steam_osx" >/dev/null 2>&1; then
-    INY=0
-    for p in $(pgrep -f "steam_osx"); do
-        vmmap "$p" 2>/dev/null | grep -q "inyector.dylib" && INY=1
-    done
-    if [ "$INY" = 1 ]; then
-        ok "Steam corre CON el mando inyectado"
-    else
-        mal "Steam está abierto SIN inyección — los juegos no verán el mando"
-        info "ciérralo y abre «Steam con mando» desde ~/Applications"
-    fi
-    if grep -q "joystick virtual dado de alta" "$SOPORTE/inyector.log" 2>/dev/null; then
-        ok "el joystick virtual llegó a darse de alta"
-        info "$(grep 'dado de alta' "$SOPORTE/inyector.log" | tail -1)"
-    fi
-else
-    info "Steam no está abierto"
-fi
-
 # ──────────────────────────────────────────────────────────── Veredicto
 titulo "Veredicto"
 
 if [ "$FALLOS" -eq 0 ]; then
     printf "  \033[1;32m✅ La cadena está intacta.\033[0m\n"
-    printf "     \033[2mRecuerda: en juegos nativos hay que activar Steam Input por juego\033[0m\n"
-    printf "     \033[2m(clic derecho → Propiedades → Mando → Activar Steam Input).\033[0m\n"
+    printf "     \033[2mRecuerda cerrar la sesión de Wine tras instalar:\033[0m\n"
+    printf "     \033[2mpkill -f winedevice; pkill -f wineserver\033[0m\n"
 else
     printf "  \033[1;31m✗ %d problema(s) detectado(s).\033[0m\n" "$FALLOS"
     printf "     \033[2mCasi todo se arregla con ./instalar.sh — y si el fallo es de Wine,\033[0m\n"

@@ -16,12 +16,12 @@ verde() { printf "\033[1;32m%s\033[0m\n" "$*"; }
 rojo()  { printf "\033[1;31m%s\033[0m\n" "$*"; }
 aviso() { printf "\033[1;33m%s\033[0m\n" "$*"; }
 
-azul "▸ 1/7  Compilando el demonio BLE"
+azul "▸ 1/6  Compilando el demonio BLE"
 cd "$RAIZ/daemon"
 swift build -c release
 BINARIO="$RAIZ/daemon/.build/release/Switch2Bridge"
 
-azul "▸ 2/7  Montando Switch2Bridge.app"
+azul "▸ 2/6  Montando Switch2Bridge.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$BINARIO" "$APP/Contents/MacOS/Switch2Bridge"
@@ -50,7 +50,7 @@ PLIST
 codesign -s - -f -i dev.swondev.switch2bridge "$APP" >/dev/null 2>&1
 verde "  app creada en $APP"
 
-azul "▸ 3/7  Preparando la shim de SDL"
+azul "▸ 3/6  Preparando la shim de SDL"
 mkdir -p "$SOPORTE"
 
 # Detecta CUALQUIER runtime de Wine instalado (CrossOver, Wine oficial,
@@ -106,7 +106,7 @@ else
     verde "  shim instalada en «${etiqueta}»"
   done
 
-  azul "▸ 4/7  Activando el bus SDL en las botellas de Wine"
+  azul "▸ 4/6  Activando el bus SDL en las botellas de Wine"
   # El registro es por botella. Buscamos cualquier carpeta de botellas de
   # cualquier runtime, en lugar de nombrar productos concretos.
   for BOTELLAS in "$HOME/Library/Application Support/"*/Bottles; do
@@ -129,69 +129,7 @@ else
   done
 fi
 
-azul "▸ 5/7  Preparando la ruta para juegos nativos de macOS"
-# El inyector se adapta en tiempo de ejecución a SDL2 o SDL3 y no hace nada en
-# procesos que no usen SDL, así que es seguro heredarlo en los hijos de Steam.
-clang -dynamiclib -arch arm64 -arch x86_64 -O2 \
-    "$RAIZ/shim/inyector.c" -o "$SOPORTE/inyector.dylib"
-codesign -s - -f "$SOPORTE/inyector.dylib" >/dev/null 2>&1
-verde "  inyector compilado"
-
-STEAM_INTERNO="$HOME/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/steam_osx"
-LANZADOR="$HOME/Applications/Steam con mando.app"
-if [ -f "$STEAM_INTERNO" ]; then
-    rm -rf "$LANZADOR"
-    mkdir -p "$LANZADOR/Contents/MacOS" "$LANZADOR/Contents/Resources"
-    cat > "$LANZADOR/Contents/MacOS/lanzar" <<LANZA
-#!/bin/bash
-# Arranca el binario interno de Steam (sin hardened runtime) con el inyector
-# cargado. Los juegos que Steam lance heredan la variable, así que los que usen
-# SDL también verán el mando.
-
-# Si ya hay un Steam abierto, macOS se limitaría a enfocarlo y la inyección no
-# ocurriría: hay que cerrarlo antes. Se lo preguntamos en lugar de fallar en
-# silencio, que es justo lo que despistaba.
-if pgrep -f "Steam.AppBundle/Steam/Contents/MacOS/steam_osx" >/dev/null 2>&1; then
-    if ! osascript -e 'display dialog "Steam ya está abierto sin el mando inyectado.\n\n¿Lo cierro y lo vuelvo a abrir con soporte del Pro Controller 2?" with title "Steam con mando" buttons {"Cancelar","Cerrar y abrir"} default button "Cerrar y abrir"' >/dev/null 2>&1; then
-        exit 0
-    fi
-    pkill -f "steam_osx" 2>/dev/null
-    pkill -f "steamwebhelper" 2>/dev/null
-    # Steam necesita un momento para soltar sus recursos antes de rearrancar.
-    for _ in \$(seq 1 15); do
-        pgrep -f "steam_osx" >/dev/null 2>&1 || break
-        sleep 1
-    done
-fi
-
-export DYLD_INSERT_LIBRARIES="$SOPORTE/inyector.dylib"
-exec "$STEAM_INTERNO" "\$@"
-LANZA
-    chmod +x "$LANZADOR/Contents/MacOS/lanzar"
-    cat > "$LANZADOR/Contents/Info.plist" <<'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>          <string>lanzar</string>
-    <key>CFBundleIdentifier</key>          <string>dev.swondev.steam-con-mando</string>
-    <key>CFBundleName</key>                <string>Steam con mando</string>
-    <key>CFBundlePackageType</key>         <string>APPL</string>
-    <key>CFBundleShortVersionString</key>  <string>1.0</string>
-    <key>CFBundleIconFile</key>            <string>icono</string>
-</dict>
-</plist>
-PLIST
-    # Reaprovecha el icono de Steam para que se reconozca de un vistazo.
-    ICONO=$(find "/Applications/Steam.app/Contents/Resources" -name "*.icns" 2>/dev/null | head -1)
-    [ -n "$ICONO" ] && cp "$ICONO" "$LANZADOR/Contents/Resources/icono.icns"
-    codesign -s - -f "$LANZADOR" >/dev/null 2>&1
-    verde "  lanzador «Steam con mando» creado en ~/Applications"
-else
-    aviso "  Steam para macOS no encontrado: se omite el lanzador"
-fi
-
-azul "▸ 6/7  Instalando el agente de arranque"
+azul "▸ 5/6  Instalando el agente de arranque"
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$AGENTE" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -217,7 +155,7 @@ launchctl bootout "gui/$(id -u)/$ETIQUETA" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$AGENTE"
 verde "  agente cargado (arrancará solo en cada inicio de sesión)"
 
-azul "▸ 7/7  Comprobando"
+azul "▸ 6/6  Comprobando"
 sleep 2
 if launchctl print "gui/$(id -u)/$ETIQUETA" >/dev/null 2>&1; then
     verde "  demonio en marcha"

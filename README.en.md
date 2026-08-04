@@ -1,17 +1,16 @@
 # Switch2Bridge
 
 **Use the Nintendo Switch 2 Pro Controller on your Mac — wirelessly, with full
-analog sticks, in Windows games running under Wine.**
+analog sticks, in Windows games running under Wine (CrossOver and compatible).**
 
 No SIP disabled · no Apple entitlements · no paid developer account · no extra hardware.
 
 Tested on macOS 26.5 · Apple Silicon (M5 Pro) · August 2026.
 
-> **Testing status.** The Wine path is **confirmed in a real game**:
-> *Dragonsword Awakening*, running in Windows Steam inside a bottle — first over
-> USB and then **fully wireless**. The native-macOS path is implemented and Steam
-> is confirmed to recognise the controller, but it has **not yet been confirmed
-> in an actual native game**.
+> **Scope, honestly.** Confirmed in a real game: *Dragonsword Awakening*,
+> running in Windows Steam inside a bottle — first over USB, then **fully
+> wireless**. **Native macOS games are not supported**: it was attempted and it
+> does not work — see [Scope](#scope) for the evidence.
 
 > Main documentation is in Spanish: [`README.md`](README.md),
 > [`docs/`](docs/). This file is a summary for the wider community.
@@ -67,7 +66,11 @@ Two gotchas that cost hours:
 - **`wineserver -k` does NOT kill the session.** Use
   `pkill -f winedevice; pkill -f wineserver`, or the `dlopen` never happens again.
 
-### 2. Steam for macOS (native games)
+### 2. Steam for macOS (native games) — ATTEMPTED, DISCARDED
+
+> **This did not work.** Everything technical below succeeded — Steam does
+> recognise the controller — but native games did not respond, so the path was
+> removed from the project. Documented so nobody repeats it.
 
 There are two Steam binaries and they differ:
 
@@ -89,12 +92,13 @@ Controller 0 attributes:  ProductID: 8297   Serial: 57e-2069-…
 Rather than hardcoding a number that would age badly, the injector probes sizes
 and validates by counting the resulting axes (136 with today's SDL3).
 
-**Steam Input is the final link.** Engines like Unity read through `IOHIDManager`
-and `GCController`, and only promote devices in their internal database to
-`Gamepad`; unknown controllers stay generic joysticks and games ignore them —
-even when the controller is a genuine HID device (verified over USB). Steam does
-recognize it, and Steam Input hands it to the game. **Enabling Steam Input per
-game is mandatory** for native titles.
+**Why it failed anyway.** Engines like Unity read through `IOHIDManager` and
+`GameController.framework`, and only promote devices in their internal database
+to `Gamepad`; unknown controllers stay generic joysticks. Even over USB — where
+the pad is a genuine system HID device — engines map it **badly and with
+errors**, because its descriptor is unusual (right stick on `Rx`/`Rz`, no hat, 21
+buttons with no standard correspondence). And `GameController.framework` ignores
+it entirely: `GCController.controllers()` returns empty with the pad connected.
 
 ### Bonus: USB-C
 
@@ -119,11 +123,15 @@ and the uninstaller removes it.
 
 ## Scope
 
-| Scenario | Bluetooth | USB-C | Status |
-|---|---|---|---|
-| Windows games under Wine (CrossOver and other runtimes) | ✅ | ✅ | **confirmed in a real game** |
-| Native macOS games via Steam Input | ✅ | ✅ | implemented; Steam sees the pad, game confirmation pending |
-| Native games outside Steam using only `GCController` | ❌ | ❌ | out of reach |
+| Scenario | Bluetooth | USB-C |
+|---|---|---|
+| **Windows games under Wine** (CrossOver and other runtimes) | ✅ confirmed | ✅ |
+| **Native macOS games** | ❌ | ❌ |
+
+Native games would need a system-wide virtual HID device, which requires the
+Apple entitlement that free accounts cannot get. Hardware presenting itself as an
+already-known controller (an Xbox 360 pad, say) would solve it, but that is out
+of scope here.
 
 ---
 
@@ -135,7 +143,6 @@ BLE protocol reverse-engineered by the community: **Nadeflore**, **ndeadly**,
 USB sequence from **ikz87** (`NSW2-controller-enabler`) and
 [`dannydarvish/Switch2ProMac`](https://github.com/dannydarvish/Switch2ProMac).
 
-The two integration techniques (the `@loader_path` SDL shim for Wine, and the
-injection into macOS Steam's internal binary) are this project's contribution.
+The `@loader_path` SDL shim technique for Wine is this project's contribution.
 
 Unofficial. Not affiliated with Nintendo, CodeWeavers or Valve. MIT licensed.

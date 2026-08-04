@@ -14,8 +14,7 @@ echo "Desinstalando el puente Switch 2…"
 launchctl bootout "gui/$(id -u)/$ETIQUETA" 2>/dev/null && verde "  agente descargado" || true
 rm -f "$AGENTE"
 rm -rf "$APP"
-rm -rf "$HOME/Applications/Steam con mando.app"
-verde "  app, lanzador y agente eliminados"
+verde "  app y agente eliminados"
 
 # La shim vive dentro del bundle de CrossOver: quitarla lo deja como estaba.
 for candidato in "/Applications/CrossOver.app" "/Applications/CrossOver Preview.app"; do

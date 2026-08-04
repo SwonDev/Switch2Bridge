@@ -81,26 +81,7 @@ if [ -d "$BOTELLAS" ]; then
     done
 fi
 
-# 5. Ruta nativa de macOS
-if [ -f "$SOPORTE/inyector.dylib" ]; then
-    ok "inyector para juegos nativos instalado"
-else
-    mal "falta el inyector (reejecuta ./instalar.sh)"
-fi
-if [ -d "$HOME/Applications/Steam con mando.app" ]; then
-    ok "lanzador «Steam con mando» disponible en ~/Applications"
-else
-    info "sin lanzador de Steam (¿Steam para macOS no está instalado?)"
-fi
-if pgrep -f "steam_osx" >/dev/null 2>&1; then
-    if pgrep -f "steam_osx" | xargs -I{} sh -c 'vmmap {} 2>/dev/null | grep -q inyector.dylib && echo si' | grep -q si; then
-        ok "Steam corre con el mando inyectado"
-    else
-        info "Steam está abierto SIN inyección: ciérralo y usa «Steam con mando»"
-    fi
-fi
-
-# 6. ¿Wine tiene la shim cargada ahora mismo?
+# 5. ¿Wine tiene la shim cargada ahora mismo?
 PIDS=$(pgrep -f winedevice 2>/dev/null || true)
 if [ -n "$PIDS" ]; then
     CARGADA=0
