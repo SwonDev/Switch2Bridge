@@ -55,7 +55,12 @@ variables DYLD se eliminan) y `~/lib` tampoco (los `LC_RPATH` del llamante ganan
 a las rutas de reserva de dyld). El único sitio que funciona es el propio
 directorio de `winebus.so`.
 
-**5. Reinstalar corta la conexión Bluetooth.**
+**5. Hay un agente de mantenimiento.**
+`reparar.sh` corre al iniciar sesión y cada seis horas: repone la shim si una
+actualización se la llevó y activa el bus SDL en botellas nuevas. Si tocas la
+lógica de instalación, acuérdate de tocarla también ahí.
+
+**6. Reinstalar corta la conexión Bluetooth.**
 `instalar.sh` reinicia el demonio. El mando reconecta solo en 10–30 segundos, o
 antes si pulsas un botón. No es un fallo.
 

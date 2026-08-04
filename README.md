@@ -142,14 +142,37 @@ Esto sólo hace falta la primera vez y después de cada reinstalación.
 | Qué | Dónde |
 |---|---|
 | Demonio sin interfaz (`LSUIElement`) | `~/Applications/Switch2Bridge.app` |
-| Agente de arranque automático | `~/Library/LaunchAgents/dev.swondev.switch2bridge.plist` |
+| Agente del demonio | `~/Library/LaunchAgents/dev.swondev.switch2bridge.plist` |
+| Agente de mantenimiento | `~/Library/LaunchAgents/dev.swondev.switch2bridge.reparar.plist` |
 | Copia de la SDL original y registros | `~/Library/Application Support/Switch2Bridge/` |
 | Shim de SDL | dentro de cada runtime de Wine detectado |
 | `Enable SDL = 1` | en el registro de cada botella |
 
 El instalador es **idempotente**: puedes volver a ejecutarlo cuantas veces
-quieras. Hazlo después de actualizar CrossOver, porque la actualización
-sobrescribe los ficheros del bundle y se lleva la shim por delante.
+quieras.
+
+### Se mantiene solo
+
+No hace falta reinstalar cuando cambian las cosas. Un agente de mantenimiento se
+ejecuta al iniciar sesión y cada seis horas, y se encarga de:
+
+- **Reponer la shim** en los runtimes donde falte. Las actualizaciones de
+  CrossOver sobrescriben su bundle y se la llevan por delante; el agente la
+  vuelve a poner sin que te enteres.
+- **Activar el bus SDL en botellas nuevas**, incluidas las que crees después de
+  instalar.
+
+Detecta las botellas por su `system.reg`, así que cubre CrossOver, Whisky,
+Mythic, Wineskin, Heroic y cualquier prefijo suelto, estén donde estén.
+
+Puedes forzar una revisión en cualquier momento:
+
+```bash
+./reparar.sh
+```
+
+Lo único que sigue siendo manual es cerrar la sesión de Wine para que cargue una
+shim recién repuesta: `pkill -f winedevice; pkill -f wineserver`.
 
 Dentro de los bundles ajenos no se sobrescribe nada: sólo se **añade** un
 fichero, que el desinstalador retira.
@@ -297,7 +320,11 @@ docs/INVESTIGACION.md           todas las pruebas y los callejones sin salida
 docs/PROTOCOLO-BLE.md           el protocolo del mando, documentado
 docs/SOLUCION-PROBLEMAS.md      síntoma, causa y solución
 docs/CONTINUIDAD.md             estado, ideas pendientes y cómo retomarlo
-instalar.sh · desinstalar.sh · verificar.sh · estado.sh · monitor.sh
+instalar.sh                     instalación completa
+reparar.sh                      mantenimiento automático de la integración
+verificar.sh                    comprobación de la cadena, eslabón por eslabón
+estado.sh · monitor.sh          diagnóstico rápido y visor en vivo
+desinstalar.sh                  reversión total
 ```
 
 ---

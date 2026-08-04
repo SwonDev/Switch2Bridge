@@ -11,8 +11,9 @@ verde() { printf "\033[1;32m%s\033[0m\n" "$*"; }
 
 echo "Desinstalando el puente Switch 2…"
 
-launchctl bootout "gui/$(id -u)/$ETIQUETA" 2>/dev/null && verde "  agente descargado" || true
-rm -f "$AGENTE"
+launchctl bootout "gui/$(id -u)/$ETIQUETA" 2>/dev/null && verde "  agente del demonio descargado" || true
+launchctl bootout "gui/$(id -u)/${ETIQUETA}.reparar" 2>/dev/null && verde "  agente de mantenimiento descargado" || true
+rm -f "$AGENTE" "$HOME/Library/LaunchAgents/${ETIQUETA}.reparar.plist"
 rm -rf "$APP"
 verde "  app y agente eliminados"
 

@@ -111,20 +111,34 @@ done < <(find -L /Applications ~/Applications -maxdepth 10 \
 
 [ "$ENCONTRADOS" -eq 0 ] && aviso "no hay ningún runtime de Wine instalado"
 
-for BOTELLAS in "$HOME/Library/Application Support/"*/Bottles; do
-    [ -d "$BOTELLAS" ] || continue
-    for botella in "$BOTELLAS"/*; do
-        [ -d "$botella" ] || continue
-        # El nombre de botella se repite entre runtimes; lo cualificamos.
-        nombre="$(basename "$(dirname "$(dirname "$botella")")")/$(basename "$botella")"
-        if grep -q '"Enable SDL"=dword:00000001' "$botella/system.reg" 2>/dev/null; then
-            ok "botella «${nombre}»: bus SDL activado"
-        else
-            mal "botella «${nombre}»: bus SDL DESACTIVADO — Wine no verá el mando"
-            info "arréglalo con: ./instalar.sh"
-        fi
-    done
-done
+# Un prefijo de Wine se reconoce por tener system.reg junto a drive_c: así
+# cubrimos CrossOver, Whisky, Mythic, Wineskin, Heroic y prefijos sueltos.
+BOTELLAS_OK=0; BOTELLAS_MAL=0
+while IFS= read -r reg; do
+    [ -n "$reg" ] || continue
+    botella="$(dirname "$reg")"
+    [ -d "$botella/drive_c" ] || continue
+    if grep -q '"Enable SDL"=dword:00000001' "$reg" 2>/dev/null; then
+        BOTELLAS_OK=$((BOTELLAS_OK + 1))
+    else
+        BOTELLAS_MAL=$((BOTELLAS_MAL + 1))
+        mal "botella sin bus SDL: $(echo "$botella" | sed "s|^$HOME|~|")"
+    fi
+done < <(find -L "$HOME/Library/Application Support" "$HOME/Library/Containers" \
+              "$HOME/Games" "$HOME/Applications" /Applications \
+              -maxdepth 6 -name "system.reg" 2>/dev/null | sort -u)
+
+if [ "$BOTELLAS_OK" -gt 0 ]; then
+    ok "$BOTELLAS_OK botella(s) con el bus SDL activado"
+fi
+[ "$((BOTELLAS_OK + BOTELLAS_MAL))" -eq 0 ] && aviso "no se encontró ninguna botella de Wine"
+
+if launchctl print "gui/$(id -u)/${ETIQUETA}.reparar" >/dev/null 2>&1; then
+    ok "agente de mantenimiento activo (repone la shim tras actualizaciones)"
+else
+    mal "sin agente de mantenimiento: las actualizaciones romperán la integración"
+    info "arréglalo con: ./instalar.sh"
+fi
 
 if pgrep -f winedevice >/dev/null 2>&1; then
     CARGADA=0

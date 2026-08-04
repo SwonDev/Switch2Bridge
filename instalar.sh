@@ -107,29 +107,34 @@ else
   done
 
   azul "▸ 4/6  Activando el bus SDL en las botellas de Wine"
-  # El registro es por botella. Buscamos cualquier carpeta de botellas de
-  # cualquier runtime, en lugar de nombrar productos concretos.
-  for BOTELLAS in "$HOME/Library/Application Support/"*/Bottles; do
-      [ -d "$BOTELLAS" ] || continue
-      for botella in "$BOTELLAS"/*; do
-          [ -d "$botella" ] || continue
-          nombre="$(basename "$botella")"
-          if grep -q '"Enable SDL"=dword:00000001' "$botella/system.reg" 2>/dev/null; then
-              verde "  botella «${nombre}»: bus SDL ya activado"
-              continue
-          fi
-          # Escribimos el valor directamente en system.reg: vale para cualquier
-          # runtime y no exige arrancar una sesión de Wine.
-          if [ -f "$botella/system.reg" ]; then
-              printf '\n[System\\\\CurrentControlSet\\\\Services\\\\winebus\\\\Parameters] 0\n"Enable SDL"=dword:00000001\n' \
-                  >> "$botella/system.reg"
-              verde "  botella «${nombre}»: bus SDL activado"
-          fi
-      done
-  done
+  # Un prefijo de Wine se reconoce sin ambigüedad por tener system.reg junto a
+  # drive_c. Buscamos así, en vez de por nombre de producto, para cubrir
+  # CrossOver, Whisky, Mythic, Wineskin, Heroic y prefijos sueltos.
+  encontradas=0
+  while IFS= read -r reg; do
+      [ -n "$reg" ] || continue
+      botella="$(dirname "$reg")"
+      [ -d "$botella/drive_c" ] || continue
+      encontradas=$((encontradas + 1))
+      etiqueta_botella="$(echo "$botella" | sed "s|^$HOME|~|")"
+      if grep -q '"Enable SDL"=dword:00000001' "$reg" 2>/dev/null; then
+          verde "  ${etiqueta_botella}: bus SDL ya activado"
+      else
+          printf '\n[System\\\\CurrentControlSet\\\\Services\\\\winebus\\\\Parameters] 0\n"Enable SDL"=dword:00000001\n' >> "$reg"
+          verde "  ${etiqueta_botella}: bus SDL activado"
+      fi
+  done < <(find -L "$HOME/Library/Application Support" "$HOME/Library/Containers" \
+                "$HOME/Games" "$HOME/Applications" /Applications \
+                -maxdepth 6 -name "system.reg" 2>/dev/null | sort -u)
+  [ "$encontradas" -eq 0 ] && aviso "  no se encontró ninguna botella (créala y reejecuta)"
 fi
 
-azul "▸ 5/6  Instalando el agente de arranque"
+azul "▸ 5/6  Instalando los agentes de arranque"
+# El reparador necesita el código de la shim para recompilarla por runtime.
+cp "$RAIZ/shim/shim_sdl.c" "$SOPORTE/shim_sdl.c"
+cp "$RAIZ/reparar.sh" "$SOPORTE/reparar.sh"
+chmod +x "$SOPORTE/reparar.sh"
+
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$AGENTE" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -153,7 +158,31 @@ PLIST
 # Descarga el agente previo: dos demonios a la vez se pelearían por el socket.
 launchctl bootout "gui/$(id -u)/$ETIQUETA" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$AGENTE"
-verde "  agente cargado (arrancará solo en cada inicio de sesión)"
+verde "  agente del demonio cargado"
+
+# Agente de mantenimiento: repone la shim si una actualización se la lleva y
+# activa el bus SDL en botellas nuevas, sin que el usuario tenga que enterarse.
+AGENTE_REPARADOR="$HOME/Library/LaunchAgents/${ETIQUETA}.reparar.plist"
+cat > "$AGENTE_REPARADOR" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>              <string>${ETIQUETA}.reparar</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$SOPORTE/reparar.sh</string>
+        <string>--silencioso</string>
+    </array>
+    <key>RunAtLoad</key>          <true/>
+    <key>StartInterval</key>      <integer>21600</integer>
+    <key>ProcessType</key>        <string>Background</string>
+</dict>
+</plist>
+PLIST
+launchctl bootout "gui/$(id -u)/${ETIQUETA}.reparar" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$AGENTE_REPARADOR"
+verde "  agente de mantenimiento cargado (revisa cada 6 h)"
 
 azul "▸ 6/6  Comprobando"
 sleep 2

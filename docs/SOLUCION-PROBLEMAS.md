@@ -62,16 +62,21 @@ CO=/Applications/CrossOver.app/Contents/SharedSupport/CrossOver
 
 ---
 
-## Dejó de funcionar tras actualizar CrossOver o Steam
+## Dejó de funcionar tras actualizar CrossOver
 
 Las actualizaciones sustituyen los ficheros del bundle y se llevan la shim por
-delante.
+delante. El agente de mantenimiento la repone en su siguiente pasada (cada seis
+horas y al iniciar sesión). Para no esperar:
 
 ```bash
-./instalar.sh
+./reparar.sh
+pkill -f winedevice; pkill -f wineserver
 ```
 
-Es idempotente: se puede ejecutar tantas veces como haga falta.
+## Creé una botella nueva y no ve el mando
+
+El agente de mantenimiento le activará el bus SDL en su siguiente pasada. Para
+forzarlo: `./reparar.sh` y después cierra la sesión de Wine.
 
 ---
 
