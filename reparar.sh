@@ -29,6 +29,19 @@ traza() {
 
 cambios=0
 
+shim_esta_integrada() {
+    local biblioteca="$1"
+
+    [ -f "$biblioteca" ] || return 1
+    otool -L "$biblioteca" 2>/dev/null \
+        | grep -Eq 'Switch2Bridge/libSDL2-real|@loader_path/libSDL2-real\.dylib'
+}
+
+# Permite probar la detección sin ejecutar la reparación del sistema completa.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    return 0
+fi
+
 # --------------------------------------------------------------------------- #
 # 1. Runtimes de Wine                                                          #
 # --------------------------------------------------------------------------- #
@@ -39,10 +52,11 @@ while IFS= read -r bus; do
     raiz="$(cd "$destino/../../.." 2>/dev/null && pwd)" || continue
     etiqueta="$(echo "$raiz" | sed "s|/Contents/.*||; s|^$HOME|~|")"
 
-    # ¿Sigue ahí nuestra shim? La reconocemos por su dependencia con la copia
-    # de la SDL original, que vive fuera del bundle.
-    if [ -f "$destino/libSDL2-2.0.0.dylib" ] && \
-       otool -L "$destino/libSDL2-2.0.0.dylib" 2>/dev/null | grep -q "Switch2Bridge/libSDL2-real"; then
+    # ¿Sigue ahí nuestra shim? La variante histórica reexporta una copia en el
+    # soporte del usuario y las releases portables usan una copia adyacente.
+    # Ambas son válidas: reescribir la portable después de firmar invalidaría
+    # el sello del bundle anfitrión.
+    if shim_esta_integrada "$destino/libSDL2-2.0.0.dylib"; then
         continue
     fi
 
@@ -82,11 +96,12 @@ done < <(find -L /Applications ~/Applications -maxdepth 10 \
 while IFS= read -r reg; do
     [ -n "$reg" ] || continue
     botella="$(dirname "$reg")"
+    botella_visible="${botella/#$HOME/~}"
     [ -d "$botella/drive_c" ] || continue
     grep -q '"Enable SDL"=dword:00000001' "$reg" 2>/dev/null && continue
 
     printf '\n[System\\\\CurrentControlSet\\\\Services\\\\winebus\\\\Parameters] 0\n"Enable SDL"=dword:00000001\n' >> "$reg"
-    traza "bus SDL activado en $(echo "$botella" | sed "s|^$HOME|~|")"
+    traza "bus SDL activado en $botella_visible"
     cambios=$((cambios + 1))
 done < <(find -L "$HOME/Library/Application Support" "$HOME/Library/Containers" \
               "$HOME/Games" "$HOME/Applications" /Applications \
