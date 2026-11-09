@@ -5,7 +5,7 @@ analógicos, en juegos de Windows bajo Wine (CrossOver y compatibles).**
 
 Sin desactivar SIP · sin entitlements de Apple · sin cuentas de pago · sin hardware extra.
 
-Probado en macOS 26.5 · Apple Silicon (M5 Pro) · agosto de 2026.
+Probado en macOS 27.0.1 · Apple Silicon (M5 Pro) · noviembre de 2026.
 
 > **Qué cubre y qué no.** Está confirmado en un juego real —*Dragonsword
 > Awakening*, en el Steam de Windows dentro de una botella, primero por cable y
@@ -76,13 +76,25 @@ que el desinstalador retira.
 
 Detalle técnico en [`docs/COMO-FUNCIONA.md`](docs/COMO-FUNCIONA.md).
 
+## Integración de referencia en Steamac
+
+El usuario confirmó el mando inalámbrico en su copia personalizada
+`FX Steam Launcher Switch2Bridge` (Steamac 1.9.13 con la corrección USB upstream
+y este puente), no en la distribución oficial de Steamac ni en juegos nativos de
+macOS en general. Esa copia consume el mismo socket S2P1 de 20 bytes mediante un
+adaptador nativo y lo convierte en un mando virtual del sistema invitado SteamOS; la ruta de
+Wine (`SDL → winebus → XInput`) sigue siendo independiente. El protocolo, el
+framing, la reconexión, los límites y el contrato aislado están en
+[`docs/COMO-FUNCIONA.md`](docs/COMO-FUNCIONA.md#formato-del-socket) y
+[`docs/CONTINUIDAD.md`](docs/CONTINUIDAD.md).
+
 ---
 
 ## Requisitos
 
 | Requisito | Detalle |
 |---|---|
-| macOS | 15 (Sequoia) o posterior. Probado en 26.5 |
+| macOS | 15 (Sequoia) o posterior. Probado en 27.0.1 |
 | Procesador | Apple Silicon o Intel |
 | Herramientas de línea de órdenes de Xcode | para compilar el demonio: `xcode-select --install` |
 | Un runtime de Wine | CrossOver, Wine oficial o cualquier empaquetado propio |
@@ -263,6 +275,7 @@ pendientes.
 | Escenario | Bluetooth | USB-C |
 |---|---|---|
 | Juegos de **Windows bajo Wine** (CrossOver y otros runtimes) | Sí, confirmado | Sí |
+| SteamOS mediante la copia personalizada de Steamac | Sí, confirmado manualmente | Sí, entrada HID verificada |
 | Juegos **nativos de macOS** | No | No |
 
 ### Por qué los juegos nativos no funcionan

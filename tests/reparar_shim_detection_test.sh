@@ -6,7 +6,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/switch2bridge-shim-test.XXXXXX")"
 trap 'find "$TEST_ROOT" -depth -delete' EXIT
 
-mkdir -p "$TEST_ROOT/bin"
+export HOME="$TEST_ROOT/home"
+export CFFIXED_USER_HOME="$HOME"
+mkdir -p "$TEST_ROOT/bin" "$HOME/Library/Application Support/Switch2Bridge"
+cp "$ROOT/shim/shim_sdl.c" "$HOME/Library/Application Support/Switch2Bridge/shim_sdl.c"
 touch "$TEST_ROOT/libSDL2-2.0.0.dylib"
 
 cat > "$TEST_ROOT/bin/otool" <<'EOF'

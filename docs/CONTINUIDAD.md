@@ -13,14 +13,39 @@ empieza por aquí.
 | Versión | 1.0 |
 | Estado | funcional y en uso |
 | Confirmado en | juegos de Windows bajo Wine, con cable y sin cable |
+| Integración Steamac | copia personalizada `FX Steam Launcher Switch2Bridge`; funcionamiento inalámbrico confirmado manualmente el 9 de noviembre de 2026 |
 | No soportado | juegos nativos de macOS (intentado; ver más abajo) |
-| Plataforma de prueba | macOS 26.5, Apple Silicon, CrossOver 25 |
+| Plataforma de prueba | macOS 27.0.1, Apple Silicon M5 Pro; Steamac 1.9.13 + corrección USB `1c116a36`; puente `d7dc2f2` |
 
 La validación de referencia: *Dragonsword Awakening*, ejecutado en el Steam de
 Windows dentro de una botella de Wine. Se detectó el mando en ese Steam como
 mando de Switch Pro, se mapearon los controles en sus opciones, y el juego
 respondió correctamente primero con el cable puesto y después sólo por
 Bluetooth.
+
+### Integración inalámbrica con Steamac
+
+El funcionamiento inalámbrico se confirmó manualmente en la copia personalizada
+de Steamac. La validación cubre esa instalación; los cambios futuros deben
+comprobar de nuevo el contrato y la integración que modifiquen.
+
+El demonio y la shim de Wine no se sustituyen: Steamac añade otro consumidor
+del mismo socket Unix y publica un mando virtual en SteamOS.
+
+Es distinta de la cadena de Wine (`shim SDL2 → winebus → XInput`). La copia
+personalizada usa Steamac 1.9.13, la corrección USB `1c116a36` y este puente
+`d7dc2f2`; no es la distribución oficial de Steamac ni una garantía para juegos
+nativos de macOS. El contrato del socket y sus límites están en
+[`COMO-FUNCIONA.md`](COMO-FUNCIONA.md#formato-del-socket) y se comprueban con
+`./tests/contrato_socket_test.sh`.
+
+El ABI no transporta rumble HD, giroscopio ni batería, y la emulación Xbox no
+expone Captura/C/GL/GR como botones (sus bits sí viajan en la máscara). La ruta
+USB necesita un dispositivo HID real enumerado por IOKit, no necesariamente
+un mando publicado por GameController: `supportsHIDDevice` por sí solo no
+demuestra esa publicación. La copia conserva sus actualizaciones por
+reconstrucción local: ante fallos o conflictos mantiene la versión anterior.
+No hace falta desactivarlas ni congelar la copia para conservar el puente.
 
 ---
 
@@ -74,12 +99,20 @@ cd Switch2Bridge
 # Compilar sólo el demonio, sin instalar
 cd daemon && swift build -c release && cd ..
 
-# Ciclo completo: compilar, instalar y verificar
+# Contrato aislado: no instala, no arranca el demonio, no toca Bluetooth/USB/Wine
+./tests/contrato_socket_test.sh
+
+# Ciclo completo: compilar, instalar y verificar (sólo si el sistema lo permite)
 ./instalar.sh && ./verificar.sh
 
 # Ver el mando en vivo mientras se depura
 ./monitor.sh
 ```
+
+Para cambios de documentación o del contrato no hace falta ejecutar
+`instalar.sh`, `reparar.sh` ni `verificar.sh`: pueden tocar el estado del sistema.
+La prueba aislada usa un socket temporal bajo `TMPDIR`, `HOME` aislado y limpia
+sólo su propio directorio.
 
 Registros útiles en `~/Library/Application Support/Switch2Bridge/`:
 

@@ -16,17 +16,27 @@ ver [`INVESTIGACION.md`](INVESTIGACION.md).
       │  CoreBluetooth · saludo       │   arranca con la sesión (LaunchAgent)
       │  calibración · reportes 29 Hz │
       └───────────────┬───────────────┘
-                      │  socket Unix, tramas de 20 bytes
-                      ▼
-              libSDL2-2.0.0.dylib
-              (dentro de winedevice.exe)
-                      │
-                      ▼
-              winebus → gamepad XInput
+                      │  socket Unix, tramas S2P1 de 20 bytes
+          ┌───────────┴────────────┐
+          ▼                        ▼
+ libSDL2-2.0.0.dylib       adaptador nativo de Steamac
+ (dentro de winedevice)    (copia personalizada, Gamepad.swift)
+          │                        │
+          ▼                        ▼
+ winebus → XInput          pad virtual en el guest SteamOS
 ```
 
 Una sola fuente de verdad (el demonio) y consumidores que se conectan a su
-socket. Añadir un destino nuevo es escribir otro cliente de 20 bytes.
+socket. Añadir un destino nuevo es escribir otro cliente de 20 bytes. El servidor
+acepta varios clientes a la vez y cada uno recibe la misma instantánea.
+
+La integración **comprobada por el usuario** en S14 es la copia personalizada
+`FX Steam Launcher Switch2Bridge` (Steamac 1.9.13 con la corrección USB upstream
+`1c116a36…` y este puente `d7dc2f2`), sobre macOS 27.0.1 / M5 Pro. No se afirma
+que la distribución **oficial** de Steamac 1.9.13 haga esto por sí sola, ni que
+los juegos nativos de macOS funcionen en general. La ruta de Wine sigue siendo
+la de `libSDL2-2.0.0.dylib`; la ruta de Steamac es un consumidor distinto del
+mismo socket.
 
 ---
 
@@ -85,16 +95,32 @@ distinguir «el mando no manda» de «nosotros decodificamos mal».
 |---|---|---|
 | 0 | `u32` | magia `0x53325031` (`"S2P1"`) |
 | 4 | `u32` | máscara de botones del mando |
-| 8 | `i16`×4 | ejes: izq X, izq Y, der X, der Y (−32767…32767) |
+| 8 | `i16`×4 | ejes: izq X, izq Y, der X, der Y (−32768…32767) |
 | 16 | `u8`×2 | gatillos ZL, ZR (0…255) |
 | 18 | `u8` | conectado (0/1) |
 | 19 | `u8` | relleno |
 
-La magia permite resincronizar si un cliente se desfasa. El servidor escribe sin
-bloquear: un cliente atascado pierde tramas en vez de frenar la entrada.
+La magia permite resincronizar si un cliente se desfasa. Un flujo de socket no
+respeta necesariamente los límites de la trama: una lectura puede traer **parte**
+de una trama, una trama completa o **varias agrupadas**. El consumidor debe
+acumular bytes, localizar la magia y consumir exactamente 20 por trama; no debe
+asumir que cada `read` es una instantánea.
+
+El servidor escribe sin bloquear: un cliente atascado pierde tramas en vez de
+frenar la entrada. Al desconectarse el mando se emite un latido neutral
+(`conectado=0`) cada segundo; el consumidor debe liberar botones/ejes y aceptar
+una reconexión posterior. El servidor conserva los demás clientes si uno se
+cierra o falla.
 
 El eje Y se invierte: el mando da Y positivo hacia arriba y SDL lo espera hacia
-abajo.
+abajo. En el adaptador nativo, X e Y se asignan por **posición física** (X arriba
+→ `BTN_WEST`/Y; Y izquierda → `BTN_NORTH`/X), no por el rótulo Nintendo. La
+máscara incluye Captura, C, GL y GR; la ruta de emulación Xbox no los expone como
+botones, pero sus bits no se pierden en el ABI.
+
+El receptor de la copia Steamac (`Gamepad.swift`) ya tiene su propia suite de
+consumo (63 comprobaciones de protocolo y 43 de HID genérico). El contrato de
+este repositorio no duplica esa suite: comprueba el ABI y el servidor.
 
 ---
 
@@ -139,6 +165,13 @@ pasa entonces a **modo HID estándar** y macOS lo publica como gamepad real.
 «ausente → presente», para no reintentar en bucle. Que `USBDeviceOpen` falle no
 es error: normalmente significa que macOS ya lo reclamó como HID.
 
+Para el consumidor de Steamac, `supportsHIDDevice == true` (o ver el dispositivo
+en IOKit) **no demuestra** que GameController lo haya publicado: la corrección
+upstream espera 2 s a que exista un `GCController` coincidente y, si no aparece,
+lo admite como HID genérico. El passthrough necesita un dispositivo HID real
+enumerado por IOKit y sus reportes; no exige que GameController lo publique
+ni puede deducirse únicamente del booleano de soporte.
+
 Está en C porque las interfaces de IOKit son de estilo COM (punteros a tablas de
 funciones) y en Swift resultan mucho más farragosas.
 
@@ -156,3 +189,29 @@ que `desinstalar.sh` retira. El valor `Enable SDL` se deja puesto por inocuo.
 
 `verificar.sh` recorre la cadena entera y señala el eslabón roto con la orden
 concreta para arreglarlo.
+
+La copia de Steamac usa actualizaciones por reconstrucción local: prepara una
+candidata fuera de la app activa, verifica antes de sustituir y conserva la
+versión anterior con backups. Ese mecanismo es fail-closed: un conflicto,
+firma/hash incorrectos o pruebas fallidas conservan la copia instalada. No hay
+que congelar las actualizaciones ni desactivarlas para mantener el puente; sus
+recursos se incluyen en la copia y en la caché autorizada.
+
+---
+
+## Verificar el contrato aislado
+
+El contrato S2P1 se puede comprobar sin instalar, sin arrancar el daemon y sin
+tocar Bluetooth, USB, Wine ni el socket real:
+
+```bash
+./tests/contrato_socket_test.sh
+```
+
+El script compila `Rutas.swift`, `Protocolo.swift`,
+`ServidorEstado.swift` y `tests/contrato_socket_test.swift` en un ejecutable
+temporal; usa un socket temporal de menos de 104 bytes, con `HOME` aislado, y
+lo elimina al terminar. Verifica la trama golden de 20 bytes, la máscara
+X/Y/Captura/C/GL/GR, permiso `0600`, dos clientes con la misma instantánea,
+cierre de un cliente sin cortar al otro, reconexión, estado neutral y limpieza
+con `parar()`. No conecta con `~/Library/Application Support/Switch2Bridge/estado.sock`.
